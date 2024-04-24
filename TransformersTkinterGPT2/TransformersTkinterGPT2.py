@@ -31,8 +31,6 @@ def process_text(text):
     # Perform any additional processing or analysis here
     return doc
 
-
-
 # Use spaCy to process the user input before generating a response
 def submit_input():
     user_text = user_input.get().strip()
@@ -55,8 +53,8 @@ def submit_input():
     if '?' in user_text:
         # Search Wikipedia for relevant information
         try:
-            wikipedia_summary = wikipedia.summary(user_text, sentences=1)
-            generated_text += f"\nAccording to Wikipedia, {wikipedia_summary}"
+            wikipedia_summary = wikipedia.summary(user_text, sentences=3)  # Fetch more sentences for context
+            generated_text += f"\nAccording to Wikipedia:\n{wikipedia_summary}"
         except wikipedia.exceptions.DisambiguationError as e:
             generated_text += f"\nThere are multiple possible meanings for this query: {e.options}"
         except wikipedia.exceptions.PageError:
@@ -64,9 +62,13 @@ def submit_input():
 
     chat_history.insert(tk.END, f"ChatGPT: {generated_text}\n")
 
+    # Display the Wikipedia information in a pop-up window
+    wiki_window = tk.Toplevel()
+    wiki_window.title("Wikipedia Summary")
+    wiki_label = tk.Label(wiki_window, text=wikipedia_summary)
+    wiki_label.pack()
 
 submit_button = tk.Button(root, text="Submit", command=submit_input)
 submit_button.pack()
-
 
 root.mainloop()
