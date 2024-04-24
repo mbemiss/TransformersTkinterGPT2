@@ -4,6 +4,7 @@ import tkinter as tk
 import spacy
 import spacy.cli
 import wikipedia
+import json
 
 #spacy.cli.download("en_core_web_lg")
 
@@ -25,11 +26,37 @@ chat_history.pack()
 user_input = tk.Entry(root, width=50)
 user_input.pack()
 
+# Define conversation history file path
+conversation_file_path = "conversation_history.json"
+
 def process_text(text):
     # Process the text with spaCy
     doc = nlp(text)
     # Perform any additional processing or analysis here
     return doc
+
+def save_conversation(user_text, generated_text):
+    # Load existing conversation history
+    try:
+        with open(conversation_file_path, "r") as file:
+            conversation_history = json.load(file)
+    except FileNotFoundError:
+        conversation_history = []
+
+    # Append new user input and generated response to conversation history
+    conversation_history.append({"user": user_text, "bot": generated_text})
+
+    # Save updated conversation history
+    with open(conversation_file_path, "w") as file:
+        json.dump(conversation_history, file, indent=4)
+
+def load_conversation():
+    try:
+        with open(conversation_file_path, "r") as file:
+            conversation_history = json.load(file)
+        return conversation_history
+    except FileNotFoundError:
+        return []
 
 # Use spaCy to process the user input before generating a response
 def submit_input():
@@ -49,6 +76,9 @@ def submit_input():
     # Decode the generated tokens to text
     generated_text = tokenizer.decode(response[0], skip_special_tokens=True)
 
+    # Save the conversation to history
+    save_conversation(user_text, generated_text)
+
     # Check if the response is a question
     if '?' in user_text:
         # Search Wikipedia for relevant information
@@ -67,6 +97,14 @@ def submit_input():
     wiki_window.title("Wikipedia Summary")
     wiki_label = tk.Label(wiki_window, text=wikipedia_summary)
     wiki_label.pack()
+
+# Load conversation history
+conversation_history = load_conversation()
+
+# Display conversation history in the chat history box
+for entry in conversation_history:
+    chat_history.insert(tk.END, f"You: {entry['user']}\n")
+    chat_history.insert(tk.END, f"ChatGPT: {entry['bot']}\n")
 
 submit_button = tk.Button(root, text="Submit", command=submit_input)
 submit_button.pack()
