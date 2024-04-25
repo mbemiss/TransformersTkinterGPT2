@@ -78,7 +78,7 @@ if dataset is not None:
 
 # Tkinter interface
 root = tk.Tk()
-root.title("ChatGPT")
+root.title("MikeGPT - Local Version!")
 
 chat_history = tk.Text(root, width=150, height=50)
 chat_history.pack()
