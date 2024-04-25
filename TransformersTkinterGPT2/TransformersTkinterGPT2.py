@@ -33,7 +33,7 @@ class MyDataset(Dataset):
         return torch.tensor(self.examples[idx], dtype=torch.long)
 
 # Check if the training data file exists
-training_file_path = 'path_to_your_training_data.txt'
+training_file_path = 'dataset.txt'
 if os.path.isfile(training_file_path):
     try:
         # Load the dataset
