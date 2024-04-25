@@ -1,12 +1,12 @@
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, Trainer, TrainingArguments, TextDataset, DataCollatorForLanguageModeling
+from torch.utils.data import Dataset
 import torch
 import tkinter as tk
 import spacy
 import spacy.cli
 import wikipedia
 import json
-
-#spacy.cli.download("en_core_web_lg")
+import os
 
 # Load the English language model
 nlp = spacy.load("en_core_web_lg")
@@ -15,6 +15,66 @@ nlp = spacy.load("en_core_web_lg")
 model_name = 'gpt2'
 model = GPT2LMHeadModel.from_pretrained(model_name)
 tokenizer = GPT2Tokenizer.from_pretrained(model_name)
+
+# Define your custom dataset class
+class MyDataset(Dataset):
+    def __init__(self, tokenizer, file_path, block_size=128):
+        self.examples = []
+        with open(file_path, encoding="utf-8") as f:
+            text = f.read()
+            tokenized_text = tokenizer.convert_tokens_to_ids(tokenizer.tokenize(text))
+            for i in range(0, len(tokenized_text) - block_size + 1, block_size):  # Truncate in block of block_size
+                self.examples.append(tokenizer.build_inputs_with_special_tokens(tokenized_text[i : i + block_size]))
+    
+    def __len__(self):
+        return len(self.examples)
+    
+    def __getitem__(self, idx):
+        return torch.tensor(self.examples[idx], dtype=torch.long)
+
+# Check if the training data file exists
+training_file_path = 'path_to_your_training_data.txt'
+if os.path.isfile(training_file_path):
+    try:
+        # Load the dataset
+        dataset = TextDataset(
+            tokenizer=tokenizer,
+            file_path=training_file_path,
+            block_size=128,
+        )
+    except Exception as e:
+        print(f"Error loading dataset: {e}")
+        dataset = None
+else:
+    print("Training data file not found. Skipping dataset loading.")
+    dataset = None
+
+# Check if the dataset was successfully loaded
+if dataset is not None:
+    # Create a data collator
+    data_collator = DataCollatorForLanguageModeling(
+        tokenizer=tokenizer, mlm=False
+    )
+
+    # Define the fine-tuning dataset and training arguments
+    training_args = TrainingArguments(
+        output_dir='./results',  # output directory
+        num_train_epochs=3,  # number of training epochs
+        per_device_train_batch_size=2,  # batch size per device during training
+        save_steps=10_000,  # save checkpoint every X steps
+        save_total_limit=2,  # limit the total amount of checkpoints
+    )
+
+    # Define the trainer for fine-tuning
+    trainer = Trainer(
+        model=model,  # the instantiated 🤗 Transformers model to be trained
+        args=training_args,  # training arguments, defined above
+        train_dataset=dataset,  # training dataset
+        data_collator=data_collator,  # data collator
+    )
+
+    # Fine-tune the GPT-2 model
+    trainer.train()
 
 # Tkinter interface
 root = tk.Tk()
@@ -59,7 +119,7 @@ def load_conversation():
         return []
 
 # Use spaCy to process the user input before generating a response
-def submit_input():
+def submit_input(tokenizer):
     user_text = user_input.get().strip()
     user_input.delete(0, tk.END)
     chat_history.insert(tk.END, f"You: {user_text}\n")
@@ -106,7 +166,7 @@ for entry in conversation_history:
     chat_history.insert(tk.END, f"You: {entry['user']}\n")
     chat_history.insert(tk.END, f"ChatGPT: {entry['bot']}\n")
 
-submit_button = tk.Button(root, text="Submit", command=submit_input)
+submit_button = tk.Button(root, text="Submit", command=lambda: submit_input(tokenizer))
 submit_button.pack()
 
 root.mainloop()
