@@ -1,0 +1,6 @@
+transformers
+torch
+torchvision
+tk
+spacy
+wikipedia
